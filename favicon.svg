@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="7" fill="#0d0c0b"/>
+  <!-- Open paper facets -->
+  <polygon points="7,6 21,5 15,14" fill="#e6dcbf" stroke="#6b5f4a" stroke-width="0.8" stroke-linejoin="round"/>
+  <polygon points="21,5 27,15 15,14" fill="#d4c8b2" stroke="#6b5f4a" stroke-width="0.8" stroke-linejoin="round"/>
+  <polygon points="27,15 23,26 19,20 15,14" fill="#beaf98" stroke="#6b5f4a" stroke-width="0.8" stroke-linejoin="round"/>
+  <polygon points="23,26 11,27 19,20" fill="#a89b84" stroke="#6b5f4a" stroke-width="0.8" stroke-linejoin="round"/>
+  <polygon points="11,27 5,18 15,14 19,20" fill="#cbbfa7" stroke="#6b5f4a" stroke-width="0.8" stroke-linejoin="round"/>
+  <!-- Ghost / unopened fold -->
+  <polygon points="5,18 7,6 15,14" fill="#211e1a" stroke="#574d3e" stroke-width="0.8" stroke-dasharray="1.5 1.5" stroke-linejoin="round"/>
+</svg>

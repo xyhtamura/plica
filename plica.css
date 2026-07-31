@@ -1,0 +1,148 @@
+/* plica — P1
+   dark ground is the road; the sheet is the only lit thing on it. */
+
+/* these are only the values before the first sheet exists — every one of them
+   is overwritten by makePalette() on load and again on every reset. there is no
+   light mode or dark mode, only this paper's mode. */
+:root {
+  --ground: #0d0c0b;
+  --vignette: rgba(0, 0, 0, .72);
+  --paper: #d9cdb4;
+  --crease: #6b5f4a;
+  --ghost: #211e1a;
+  --ghost-edge: #574d3e;
+  --reset-face: #cabd9f;
+  --reset-edge: #4a4032;
+  --ink: #2b241a;
+  --faded: #6d6047;
+  --tell: #4a4237;
+  --collapse: 0;
+  --font-leaf: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--ground);
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+/* the road closes in at the edges — which way it closes depends on the sheet */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(120vmax 90vmax at 50% 46%, transparent 34%, var(--vignette) 100%);
+}
+
+#sheet {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  --squeeze: calc(1 - var(--collapse) * 0.82);
+}
+
+/* the collapse gesture creases every panel shut about its own centre */
+.cell {
+  transform-box: fill-box;
+  transform-origin: center;
+  scale: var(--squeeze);
+}
+
+.cell .content { pointer-events: none; }
+.cell .edge { fill: none; pointer-events: none; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+/* ---- open folds ---- */
+
+.cell.open .face { fill: var(--paper); }
+.cell.open .edge { stroke: var(--crease); stroke-width: 1.1; }
+.cell.drawn .edge { stroke: var(--reset-edge); stroke-width: 1.6; }
+
+.cell.reset .face { fill: var(--reset-face); }
+.cell.reset .edge { stroke: var(--reset-edge); stroke-width: 1.3; stroke-dasharray: 7 5; }
+.cell.reset { cursor: grab; }
+
+.leaf-img { pointer-events: none; }
+.leaf-shape { pointer-events: none; }
+
+.leaf-text {
+  font-family: var(--font-leaf);
+  font-style: italic;
+  fill: var(--ink);
+  paint-order: stroke fill;
+  stroke: var(--paper);
+  stroke-opacity: .85;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+/* type-as-image. the quiet setting keeps a paper-coloured edge — not for
+   legibility, which the sheet no longer promises, but because a cutting carries
+   a rim of the page it was cut from. the expressive treatments sit directly on
+   the picture and are allowed to overrun the fold and be torn off at the crease. */
+.type { pointer-events: none; }
+.type-plain {
+  font-style: italic;
+  paint-order: stroke fill;
+  stroke: var(--paper);
+  stroke-opacity: .8;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.leaf-ring { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 2 4; opacity: .6; }
+.leaf-glyph { fill: var(--ink); font-family: var(--font-leaf); opacity: .85; }
+.leaf-gloss {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 7px;
+  fill: var(--faded);
+  letter-spacing: .02em;
+}
+.leaf-pending { fill: var(--faded); opacity: .5; }
+.leaf-pending { animation: breathe 1.6s ease-in-out infinite; }
+
+@keyframes breathe { 0%, 100% { opacity: .18 } 50% { opacity: .55 } }
+
+/* ---- ghosts ---- */
+
+/* colour is free everywhere else, but a ghost must never be mistakable for an
+   open fold — that distinction is the click affordance, not decoration. it is
+   carried by the dashed stroke and the translucency, so it survives whatever
+   hues the sheet happens to draw. */
+.cell.ghost .face { fill: var(--ghost); }
+.cell.ghost .edge { stroke: var(--ghost-edge); stroke-width: .9; stroke-dasharray: 3 6; }
+.cell.ghost { cursor: pointer; opacity: .66; transition: opacity .18s ease; }
+.cell.ghost:hover { opacity: 1; }
+.cell.ghost:hover .edge { stroke-dasharray: none; stroke-width: 1.3; }
+
+/* tells — a shadow through paper, never a number */
+.tell-blot { fill: var(--tell); opacity: .5; }
+.tell-rule { stroke: var(--tell); stroke-width: 1.4; opacity: .55; }
+.tell-halo { fill: none; stroke: var(--tell); stroke-width: 1.6; opacity: .5; }
+
+.cell.enter { opacity: 0; }
+.cell { transition: opacity .5s ease; }
+
+#debug {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  margin: 0;
+  padding: .5rem .8rem;
+  z-index: 3;
+  font-size: 11px;
+  color: #7d715c;
+  background: rgba(0, 0, 0, .55);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell { transition: none; }
+  .leaf-pending { animation: none; }
+}
