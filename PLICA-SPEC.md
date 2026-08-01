@@ -441,7 +441,10 @@ early. That's a physical gesture, not a modal — the no-UI rule survives.)
 
 ## 9. Interface
 
-There isn't one. Everything is the paper.
+The first visit opens one readable introduction over the sheet. It states what
+plica is, names the five gestures needed for the beta, and then gets out of the
+way. Dismissal is stored separately from sheet state, so resetting the paper
+does not show it again. After that, everything is the paper.
 
 | Gesture | Result |
 |---|---|
@@ -449,7 +452,7 @@ There isn't one. Everything is the paper.
 | tap an open effect fold | deploy |
 | press-and-hold the reset fold | collapse the sheet |
 | tap an open fold | zoom to read it large (cutline's collage view, cell-shaped) |
-| drag empty space | pan |
+| drag with one pointer | pan |
 | wheel / pinch | zoom |
 | `Esc` | leave the read view |
 
@@ -480,12 +483,15 @@ plica/
     leaf.js              content generation + render, LOD hydrate/dehydrate
     language.js          VENDORED from cutline — pull pipeline + reservoir
     effects.js           effect table, spatial targeting, application
+    gestures.js          two-pointer pinch geometry
     ghost.js             pre-reveal identity RNG, tells
+    intro.js             first-use seen state
     camera.js            pan/zoom/auto-frame
     state.js             localStorage save/load/reset
   tests/
     state.test.js        persistence round-trip and recovery tests
     effects.test.js      spatial targeting and re-crease invariants
+    interaction.test.js  first-use and pinch geometry tests
   vendor/
     delaunay.js          d3-delaunay, local copy (no CDN)
 ```
@@ -525,9 +531,10 @@ and the `DEPENDENCIES.md` entry.
 `reverse-ring`, `watermark`, `re-crease`, and spent marks are built. The wider
 letterwork family, `annex`, `foxing`, and immediate effects remain.
 
-**P3 — the paper persists.** Versioned localStorage persistence is built. LOD,
-read view, deckled outer edge, paper texture, the collapse animation properly
-animated, and mobile touch remain.
+**P3 — the paper persists.** Versioned localStorage persistence, the first-use
+introduction, and two-pointer pinch zoom are built. LOD, read view, deckled outer
+edge, paper texture, minimum keyboard access, and the full collapse animation
+remain.
 
 ### Shipping beta sequence
 
@@ -536,8 +543,10 @@ animated, and mobile touch remain.
 2. ~~Implement the minimal dormant effect loop: reverse touching folds, reveal
    nearby ghosts, and re-crease.~~ Built 2026-08-01; no other effect marks are
    generated.
-3. Add first-use instructions, pinch zoom, and minimum keyboard access.
-4. Set and verify a 100-unfold performance target, then deploy the Pages beta.
+3. ~~Add first-use instructions and pinch zoom.~~ Built 2026-08-01; physical
+   touch-device pinch verification remains.
+4. Add minimum keyboard access.
+5. Set and verify a 100-unfold performance target, then deploy the Pages beta.
 
 **Later, unscheduled.** Export the sheet as a single tall image or SVG. Sound —
 paper handling, one crease per unfold. A WebGL substrate layer for fibre and
@@ -589,6 +598,15 @@ stain. Whether a sheet can ever be *finished* rather than merely abandoned.
   tests and live browser deployments of all three effects, including a reload
   that preserved every re-creased path. Remaining: first-use instructions,
   pinch zoom, minimum keyboard access, and the 100-unfold performance target.
+- **2026-08-01 — Codex** — Added a high-contrast first-visit introduction that
+  explains the object and its five beta gestures, remembers dismissal outside
+  the sheet save, and stays dismissed after reset or reload. Added two-pointer
+  pinch zoom around the moving touch midpoint, including a clean handoff to
+  one-pointer pan when a finger lifts. Verified with twelve automated tests,
+  desktop and 390×844 browser layouts, dismissal across reload, and a browser
+  pan regression check. The browser harness cannot emit two concurrent touch
+  contacts, so direct pinch verification remains for a physical touch device.
+  Remaining: minimum keyboard access and the 100-unfold performance target.
 
 ---
 

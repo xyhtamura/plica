@@ -39,12 +39,16 @@ No API keys. All sources are keyless and CORS-open:
 |---|---|
 | tap a ghost | unfold it |
 | tap an open effect fold | deploy and consume it |
-| drag empty space | pan |
-| wheel | zoom |
+| drag with one pointer | pan |
+| wheel or two-finger pinch | zoom |
 | press and hold the reset fold | collapse the sheet and find a new one |
 
 The collapse begins under your finger and reverses if you let go early. It is
 not a button; it is a fold that does that.
+
+The first visit opens a short introduction over the sheet. Dismissing it is
+remembered separately from the sheet, so starting a new paper does not show the
+introduction again.
 
 The sheet is framed once, when you find it. After that the camera is yours —
 opening a fold never pulls the view back to fit. The paper grows off the edge of
@@ -181,15 +185,16 @@ is unreachable, a small built-in deck stands in.
 
 ## Status
 
-P0 (geometry), P1 (content), versioned persistence, and the beta effect loop are
-built. The next shipping step is first-use instructions, pinch zoom, and minimum
-keyboard access. LOD, the read view, and the deckled outer edge remain. See
+P0 (geometry), P1 (content), versioned persistence, the beta effect loop,
+first-use instructions, and pinch zoom are built. The next shipping step is
+minimum keyboard access and physical touch-device pinch verification. LOD, the
+read view, and the deckled outer edge remain. See
 [PLICA-SPEC.md](PLICA-SPEC.md).
 
-Run the persistence and effect tests from `F:\xyh`:
+Run the persistence, effect, and interaction tests from `F:\xyh`:
 
 ```text
-node --experimental-default-type=module --test plica/tests/state.test.js plica/tests/effects.test.js
+node --experimental-default-type=module --test plica/tests/state.test.js plica/tests/effects.test.js plica/tests/interaction.test.js
 ```
 
 ---

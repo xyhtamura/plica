@@ -13,6 +13,19 @@
     <defs id="clips"></defs>
     <g id="world"><g id="cells"></g></g>
   </svg>
+  <dialog id="intro" aria-labelledby="intro-title" aria-describedby="intro-summary intro-actions">
+    <p class="intro-kicker">plica</p>
+    <h1 id="intro-title">An unfolding paper</h1>
+    <p id="intro-summary">plica is a growing sheet of generated text, images, and effects. What appears in a fold is influenced by the folds beside it. There is no score or ending.</p>
+    <dl id="intro-actions">
+      <div><dt>Open</dt><dd>Tap or click a dark fold.</dd></div>
+      <div><dt>Use an effect</dt><dd>Tap an open fold marked with a glyph and instruction.</dd></div>
+      <div><dt>Move</dt><dd>Drag with one pointer.</dd></div>
+      <div><dt>Zoom</dt><dd>Pinch with two fingers or use the mouse wheel.</dd></div>
+      <div><dt>New sheet</dt><dd>Press and hold the dashed fold.</dd></div>
+    </dl>
+    <button id="intro-dismiss" type="button">Show the sheet</button>
+  </dialog>
   <p id="debug" hidden></p>
   <script type="module" src="src/main.js"></script>
 </body>

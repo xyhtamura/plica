@@ -1,4 +1,4 @@
-/* plica — P1
+/* plica — release hardening
    dark ground is the road; the sheet is the only lit thing on it. */
 
 /* these are only the values before the first sheet exists — every one of them
@@ -132,6 +132,78 @@ body::before {
 .cell.enter { opacity: 0; }
 .cell { transition: opacity .5s ease; }
 
+/* The introduction is the one document in plica. Its colours are fixed so its
+   instructions remain readable independently of the generated sheet palette. */
+#intro {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  margin: auto;
+  padding: clamp(1.4rem, 4vw, 2.4rem);
+  border: 1px solid #6d6455;
+  border-radius: 2px;
+  color: #1b1915;
+  background: #f2ecdf;
+  box-shadow: 0 1.5rem 6rem rgba(0, 0, 0, .48);
+}
+
+#intro::backdrop {
+  background: rgba(10, 9, 8, .72);
+  backdrop-filter: blur(3px);
+}
+
+.intro-kicker {
+  margin: 0 0 .45rem;
+  font-size: .72rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+#intro h1 {
+  margin: 0;
+  font-family: var(--font-leaf);
+  font-size: clamp(1.8rem, 7vw, 2.8rem);
+  font-weight: 400;
+  line-height: 1;
+}
+
+#intro-summary {
+  max-width: 46ch;
+  margin: 1rem 0 1.4rem;
+  font: 1rem/1.5 var(--font-leaf);
+}
+
+#intro-actions {
+  display: grid;
+  gap: .7rem;
+  margin: 0 0 1.6rem;
+}
+
+#intro-actions div {
+  display: grid;
+  grid-template-columns: 7.4rem 1fr;
+  gap: .75rem;
+  padding-top: .7rem;
+  border-top: 1px solid #c9c0ae;
+}
+
+#intro-actions dt { font-weight: 700; }
+#intro-actions dd { margin: 0; line-height: 1.35; }
+
+#intro-dismiss {
+  width: 100%;
+  min-height: 2.9rem;
+  border: 1px solid #1b1915;
+  border-radius: 0;
+  color: #f2ecdf;
+  background: #1b1915;
+  font: inherit;
+  cursor: pointer;
+}
+
+#intro-dismiss:hover { background: #363127; }
+#intro-dismiss:focus-visible { outline: 3px solid #b24f89; outline-offset: 3px; }
+
 #debug {
   position: fixed;
   left: 0; right: 0; bottom: 0;
@@ -147,4 +219,8 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .cell { transition: none; }
   .leaf-pending { animation: none; }
+}
+
+@media (max-width: 30rem) {
+  #intro-actions div { grid-template-columns: 1fr; gap: .2rem; }
 }

@@ -22,6 +22,8 @@ import {
   spentKindFor
 } from "./effects.js";
 import { captureState, clearState, loadState, restoreLanguage, saveState } from "./state.js";
+import { applyPinch, pinchFrame } from "./gestures.js";
+import { rememberIntro, shouldShowIntro } from "./intro.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("sheet");
@@ -29,7 +31,10 @@ const world = document.getElementById("world");
 const clips = document.getElementById("clips");
 const cellsEl = document.getElementById("cells");
 const debugEl = document.getElementById("debug");
+const introEl = document.getElementById("intro");
+const introDismissEl = document.getElementById("intro-dismiss");
 const DEBUG = new URLSearchParams(location.search).has("debug");
+const FORCE_INTRO = new URLSearchParams(location.search).has("intro");
 if (DEBUG) debugEl.hidden = false;
 
 let sheet, lang, oracle, leaves, type, palette, effectState;
@@ -420,14 +425,46 @@ function stepTween(now) {
  *
  * calling setPointerCapture on the svg root retargets the events that follow —
  * including the click — to the capture element, so `ev.target.closest(".cell")`
- * was always null and no ghost could ever be picked. capture is now taken only
- * once a drag has actually begun, and the fold under the press is remembered
+ * was always null and no ghost could ever be picked. Capture begins once a drag
+ * starts or a second touch begins, and the fold under a tap is remembered
  * rather than re-derived from a later event's target.
  */
 
+const activePointers = new Map();
 let press = null;
+let pinch = null;
+
+function rememberPointer(ev) {
+  activePointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+}
+
+function captureActivePointers() {
+  for (const id of activePointers.keys()) {
+    try { svg.setPointerCapture(id); } catch { /* pointer already gone */ }
+  }
+}
+
+function finishPinch() {
+  pinch = null;
+  queueSave();
+  const remaining = [...activePointers.entries()][0];
+  press = remaining ? {
+    id: null, pointerId: remaining[0], moved: true,
+    x: remaining[1].x, y: remaining[1].y,
+    lx: remaining[1].x, ly: remaining[1].y
+  } : null;
+}
 
 svg.addEventListener("pointerdown", ev => {
+  rememberPointer(ev);
+  if (activePointers.size >= 2) {
+    cancelHold();
+    press = null;
+    if (!pinch) pinch = pinchFrame(activePointers);
+    captureActivePointers();
+    ev.preventDefault();
+    return;
+  }
   const g = ev.target.closest?.(".cell");
   const id = g ? Number(g.dataset.id) : null;
   if (id !== null && sheet.seeds.get(id)?.role === "reset") { press = null; startHold(); return; }
@@ -438,6 +475,16 @@ svg.addEventListener("pointerdown", ev => {
 });
 
 svg.addEventListener("pointermove", ev => {
+  if (!activePointers.has(ev.pointerId)) return;
+  rememberPointer(ev);
+  if (pinch) {
+    const next = pinchFrame(activePointers);
+    if (next) {
+      applyPinch(cam, pinch, next);
+      pinch = next;
+    }
+    return;
+  }
   if (!press) return;
   if (!press.moved && Math.abs(ev.clientX - press.x) + Math.abs(ev.clientY - press.y) > 4) {
     press.moved = true;
@@ -447,7 +494,15 @@ svg.addEventListener("pointermove", ev => {
   press.lx = ev.clientX; press.ly = ev.clientY;
 });
 
-svg.addEventListener("pointerup", () => {
+svg.addEventListener("pointerup", ev => {
+  const wasPinching = Boolean(pinch);
+  activePointers.delete(ev.pointerId);
+  try { svg.releasePointerCapture(ev.pointerId); } catch { /* already released */ }
+  if (wasPinching) {
+    if (activePointers.size >= 2) pinch = pinchFrame(activePointers);
+    else finishPinch();
+    return;
+  }
   const p = press;
   press = null;
   if (!p) return;
@@ -462,9 +517,16 @@ svg.addEventListener("pointerup", () => {
   else if (seed?.tier === "open") doDeploy(p.id);
 });
 
-svg.addEventListener("pointercancel", () => {
-  if (press?.moved) queueSave();
-  press = null;
+svg.addEventListener("pointercancel", ev => {
+  const wasPinching = Boolean(pinch);
+  activePointers.delete(ev.pointerId);
+  if (wasPinching) {
+    if (activePointers.size >= 2) pinch = pinchFrame(activePointers);
+    else finishPinch();
+  } else if (press?.pointerId === ev.pointerId) {
+    if (press.moved) queueSave();
+    press = null;
+  }
 });
 
 svg.addEventListener("wheel", ev => {
@@ -476,15 +538,23 @@ svg.addEventListener("wheel", ev => {
 /* the reset fold is a gesture, not a dialogue: the collapse begins under your
    finger and reverses if you let go early */
 let hold = null;
+let holdRelease = null;
+
+function cancelHold() {
+  if (holdRelease) {
+    window.removeEventListener("pointerup", holdRelease);
+    window.removeEventListener("pointercancel", holdRelease);
+  }
+  holdRelease = null;
+  hold = null;
+}
+
 function startHold(now = performance.now()) {
+  cancelHold();
   hold = { t0: now };
-  const release = () => {
-    window.removeEventListener("pointerup", release);
-    window.removeEventListener("pointercancel", release);
-    hold = null;
-  };
-  window.addEventListener("pointerup", release);
-  window.addEventListener("pointercancel", release);
+  holdRelease = cancelHold;
+  window.addEventListener("pointerup", holdRelease);
+  window.addEventListener("pointercancel", holdRelease);
 }
 
 function stepHold(now = performance.now()) {
@@ -492,7 +562,7 @@ function stepHold(now = performance.now()) {
   collapse += (target - collapse) * (hold ? 0.3 : 0.18);
   if (collapse < 0.002) { collapse = 0; svg.style.removeProperty("--collapse"); return; }
   svg.style.setProperty("--collapse", collapse.toFixed(3));
-  if (hold && target >= 1) { hold = null; newSheet(); }
+  if (hold && target >= 1) { cancelHold(); newSheet(); }
 }
 
 /* ---------------- boot ---------------- */
@@ -536,6 +606,9 @@ function configureSheet(record = null, previousAncestors = null) {
 
 function newSheet() {
   const previousAncestors = lang?.ancestors;
+  activePointers.clear();
+  pinch = null;
+  press = null;
   clearScene();
   clearState(storage);
   configureSheet(null, previousAncestors);
@@ -567,6 +640,21 @@ addEventListener("resize", () => {
 addEventListener("pagehide", saveNow);
 document.addEventListener("visibilitychange", () => { if (document.hidden) saveNow(); });
 
+function showIntro() {
+  if (!FORCE_INTRO && !shouldShowIntro(storage)) return;
+  if (typeof introEl.showModal === "function") introEl.showModal();
+  else introEl.setAttribute("open", "");
+}
+
+function dismissIntro() {
+  rememberIntro(storage);
+  if (typeof introEl.close === "function") introEl.close();
+  else introEl.removeAttribute("open");
+}
+
+introDismissEl.addEventListener("click", dismissIntro);
+introEl.addEventListener("close", () => rememberIntro(storage));
+
 /* the shared world: okkategorakle.csv lives in cutline and is fetched live, so
    both pieces keep the same ancestors. unreachable is survivable. */
 const saved = loadState(storage);
@@ -582,6 +670,7 @@ catch (error) {
   configureSheet();
 }
 saveNow();
+showIntro();
 requestAnimationFrame(loop);
 
 if (DEBUG) {
