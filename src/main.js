@@ -14,6 +14,7 @@ import { renderLeaf, renderTell, EFFECT_MARKS } from "./leaf.js";
 import { TypeSetter, plateColour } from "./type.js";
 import { makePalette } from "./palette.js";
 import { makeShape } from "./shape.js";
+import { captureState, clearState, loadState, restoreLanguage, saveState } from "./state.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("sheet");
@@ -47,6 +48,10 @@ const nodes = new Map();      // seed id -> {g, face, edge, content, clip}
 let tween = null;
 let collapse = 0;
 let ancestorsReady = null;
+let saveTimer = null;
+let lastSave = null;
+let storage = null;
+try { storage = window.localStorage; } catch { /* private or restricted context */ }
 
 /* ---------------- content ---------------- */
 
@@ -125,6 +130,19 @@ async function fillLeaf(id) {
   }
   setLeafAppearance(id);
   paintContent(id);
+  queueSave();
+}
+
+async function refillImages(id) {
+  const leaf = leaves.get(id);
+  if (!leaf?.imagesOmitted) return;
+  if (ancestorsReady) await ancestorsReady;
+  try { leaf.images = await lang.images([leaf.title || seedFor(id), seedFor(id)]); }
+  catch { leaf.images = []; }
+  delete leaf.imagesOmitted;
+  setLeafAppearance(id);
+  paintContent(id);
+  queueSave();
 }
 
 /* ---------------- render ---------------- */
@@ -251,6 +269,50 @@ function viewport() { return { w: svg.clientWidth, h: svg.clientHeight }; }
    the user — opening a fold never pulls the view back to fit. */
 let lastViewport = null;
 
+/* ---------------- persistence ---------------- */
+
+function saveNow() {
+  if (!sheet || !leaves || !lang || !lastViewport) return null;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  const snapshot = captureState({
+    sheet,
+    leaves,
+    camera: cam.toState(viewport()),
+    language: lang
+  });
+  lastSave = saveState(storage, snapshot);
+  if (DEBUG) debugEl.dataset.persistence = lastSave.saved
+    ? `saved${lastSave.imagesOmitted ? "-without-images" : ""}`
+    : "unavailable";
+  return lastSave;
+}
+
+function queueSave(delay = 120) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, delay);
+}
+
+function restoreLeaves(entries) {
+  const restored = new Map();
+  for (const entry of entries) {
+    const [id, leaf] = Array.isArray(entry) ? entry : [];
+    if (!Number.isInteger(id) || !sheet.seeds.has(id) || !leaf || typeof leaf !== "object" ||
+        leaf.id !== id || !["pending", "ready"].includes(leaf.state) || restored.has(id)) {
+      throw new Error("invalid leaf state");
+    }
+    if (leaf.lines !== undefined && (!Array.isArray(leaf.lines) ||
+        !leaf.lines.every(line => typeof line === "string"))) throw new Error("invalid leaf lines");
+    if (leaf.images !== undefined && (!Array.isArray(leaf.images) ||
+        !leaf.images.every(url => typeof url === "string"))) throw new Error("invalid leaf images");
+    restored.set(id, {
+      ...leaf,
+      lines: leaf.lines ? [...leaf.lines] : undefined,
+      images: leaf.images ? [...leaf.images] : undefined
+    });
+  }
+  return restored;
+}
+
 /* ---------------- the unfold ---------------- */
 
 function doUnfold(id) {
@@ -272,6 +334,7 @@ function doUnfold(id) {
   render();
   // the camera does NOT follow an unfold. framing is the user's to hold.
   if (pairs.length) tween = { pairs, t0: performance.now(), dur: 460 };
+  queueSave();
 }
 
 function stepTween(now) {
@@ -330,17 +393,25 @@ svg.addEventListener("pointerup", () => {
   const p = press;
   press = null;
   if (!p) return;
-  if (p.moved) { try { svg.releasePointerCapture(p.pointerId); } catch { /* already released */ } return; }
+  if (p.moved) {
+    try { svg.releasePointerCapture(p.pointerId); } catch { /* already released */ }
+    queueSave();
+    return;
+  }
   if (p.id === null) return;
   if (sheet.seeds.get(p.id)?.tier === "ghost") doUnfold(p.id);
   // open effect folds are dormant marks in P1; deploying them is P2
 });
 
-svg.addEventListener("pointercancel", () => { press = null; });
+svg.addEventListener("pointercancel", () => {
+  if (press?.moved) queueSave();
+  press = null;
+});
 
 svg.addEventListener("wheel", ev => {
   ev.preventDefault();
   cam.zoomAt(ev.clientX, ev.clientY, ev.deltaY < 0 ? 1.12 : 1 / 1.12);
+  queueSave();
 }, { passive: false });
 
 /* the reset fold is a gesture, not a dialogue: the collapse begins under your
@@ -367,33 +438,48 @@ function stepHold(now = performance.now()) {
 
 /* ---------------- boot ---------------- */
 
-function newSheet() {
+function clearScene() {
   for (const [, n] of nodes) { n.g.remove(); n.clip.parentNode?.remove(); }
   nodes.clear();
   tween = null;
   collapse = 0;
   svg.style.removeProperty("--collapse");
+}
 
-  const seed = (Math.random() * 1e9) | 0;
-  sheet = new Sheet(seed);
+function configureSheet(record = null, previousAncestors = null) {
+  sheet = record ? Sheet.fromState(record.sheet) : new Sheet();
   oracle = new Oracle(sheet.sheetSeed);
   palette = makePalette(sheet.sheetSeed, mulberry32(hash32(sheet.sheetSeed, 0xc010)));
   applyPalette(palette);
   type = new TypeSetter(sheet.sheetSeed, mulberry32(hash32(sheet.sheetSeed, 0x7ee)), palette);
-  const prevAncestors = lang?.ancestors;
   lang = new Language(mulberry32(sheet.sheetSeed));
-  if (prevAncestors) lang.ancestors = prevAncestors;   // the world is already known
-  leaves = new Map();
+  if (record) restoreLanguage(lang, record.language);
+  if (previousAncestors) lang.ancestors = previousAncestors;
+  leaves = record ? restoreLeaves(record.leaves) : new Map();
 
-  for (const s of sheet.seeds.values()) {
-    if (s.tier === "open") { leaves.set(s.id, newLeaf(s.id)); fillLeaf(s.id); }
+  for (const seed of sheet.seeds.values()) {
+    if (seed.tier === "open" && !leaves.has(seed.id)) leaves.set(seed.id, newLeaf(seed.id));
   }
 
+  ancestorsReady = previousAncestors ? null
+    : lang.loadAncestors().then(ok => { ancestorsReady = null; return ok; });
   render();
-  cam.manual = false;
   lastViewport = viewport();
-  cam.frame(sheet.bounds(), lastViewport, null);
-  cam.snap();
+  if (record) cam.fromState(record.camera, lastViewport);
+  else { cam.frame(sheet.bounds(), lastViewport, null); cam.snap(); }
+
+  for (const [id, leaf] of leaves) {
+    if (leaf.state === "pending") fillLeaf(id);
+    else if (leaf.imagesOmitted) refillImages(id);
+  }
+}
+
+function newSheet() {
+  const previousAncestors = lang?.ancestors;
+  clearScene();
+  clearState(storage);
+  configureSheet(null, previousAncestors);
+  saveNow();
 }
 
 /* one frame of the animation loop, factored out so it can be driven manually.
@@ -418,25 +504,24 @@ addEventListener("resize", () => {
   lastViewport = v;
 });
 
+addEventListener("pagehide", saveNow);
+document.addEventListener("visibilitychange", () => { if (document.hidden) saveNow(); });
+
 /* the shared world: okkategorakle.csv lives in cutline and is fetched live, so
    both pieces keep the same ancestors. unreachable is survivable. */
-sheet = new Sheet();
-oracle = new Oracle(sheet.sheetSeed);
-palette = makePalette(sheet.sheetSeed, mulberry32(hash32(sheet.sheetSeed, 0xc010)));
-applyPalette(palette);
-type = new TypeSetter(sheet.sheetSeed, mulberry32(hash32(sheet.sheetSeed, 0x7ee)), palette);
-lang = new Language(mulberry32(sheet.sheetSeed));
-leaves = new Map();
-ancestorsReady = lang.loadAncestors().then(ok => { ancestorsReady = null; return ok; });
-
-for (const s of sheet.seeds.values()) {
-  if (s.tier === "open") { leaves.set(s.id, newLeaf(s.id)); fillLeaf(s.id); }
+const saved = loadState(storage);
+if (DEBUG) debugEl.dataset.restore = saved ? "pending" : "none";
+try {
+  configureSheet(saved);
+  if (DEBUG && saved) debugEl.dataset.restore = "restored";
 }
-
-render();
-lastViewport = viewport();
-cam.frame(sheet.bounds(), lastViewport, null);
-cam.snap();
+catch (error) {
+  if (DEBUG) debugEl.dataset.restore = error instanceof Error ? error.message : "invalid";
+  clearState(storage);
+  clearScene();
+  configureSheet();
+}
+saveNow();
 requestAnimationFrame(loop);
 
 if (DEBUG) {
@@ -447,6 +532,8 @@ if (DEBUG) {
     get cam() { return cam; },
     get palette() { return palette; },
     get tweening() { return !!tween; },
+    get persistence() { return lastSave; },
+    save: saveNow,
     /* drive the loop by hand when rAF is asleep (headless / hidden tab) */
     step(n = 1, dt = 16) {
       const t0 = performance.now();

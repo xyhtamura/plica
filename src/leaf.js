@@ -10,6 +10,7 @@
  */
 
 import { renderShape } from "./shape.js";
+import { hash32, mulberry32 } from "./rng.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 
@@ -67,6 +68,7 @@ function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 
 function renderImages(g, cell, leaf) {
   const box = bbox(cell.runs);
+  const rng = mulberry32(hash32(leaf.id, 0x1a9e));
   // often a fold holds exactly one picture. stacking three every time reads as
   // a filter; one image, torn to the shape of the fold, reads as a clipping.
   const want = leaf.imageCount ?? 1;
@@ -76,10 +78,10 @@ function renderImages(g, cell, leaf) {
     /* oversize by more than the diagonal so a full-circle rotation can never
        swing a corner into view, then offset so the crop is never the middle of
        the picture */
-    const grow = 1.6 + Math.random() * 0.7;
+    const grow = 1.6 + rng() * 0.7;
     const w = box.w * grow, h = box.h * grow;
-    const x = box.minX - (w - box.w) * Math.random();
-    const y = box.minY - (h - box.h) * Math.random();
+    const x = box.minX - (w - box.w) * rng();
+    const y = box.minY - (h - box.h) * rng();
     img.setAttribute("href", leaf.images[i]);
     img.setAttribute("x", x.toFixed(1));
     img.setAttribute("y", y.toFixed(1));
@@ -89,7 +91,7 @@ function renderImages(g, cell, leaf) {
     img.setAttribute("class", "leaf-img");
     // true isotropy: a cutting has no up
     img.setAttribute("transform",
-      `rotate(${(Math.random() * 360).toFixed(1)} ${(x + w / 2).toFixed(1)} ${(y + h / 2).toFixed(1)})`);
+      `rotate(${(rng() * 360).toFixed(1)} ${(x + w / 2).toFixed(1)} ${(y + h / 2).toFixed(1)})`);
     if (i > 0) img.style.mixBlendMode = ["multiply", "luminosity", "hard-light", "screen"][i % 4];
     img.style.opacity = i === 0 ? "0.92" : "0.7";
     g.appendChild(img);
@@ -191,6 +193,7 @@ export function renderTell(g, cell, tell) {
   clear(g);
   const [cx, cy] = cell.centroid;
   const r = inradius(cell);
+  const rng = mulberry32(hash32(cell.id, 0x7e11));
 
   if (tell === "blot") {
     const blot = document.createElementNS(SVG, "ellipse");
@@ -199,7 +202,7 @@ export function renderTell(g, cell, tell) {
     blot.setAttribute("cy", cy.toFixed(1));
     blot.setAttribute("rx", (r * 0.62).toFixed(1));
     blot.setAttribute("ry", (r * 0.48).toFixed(1));
-    blot.setAttribute("transform", `rotate(${(Math.random() * 60 - 30).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`);
+    blot.setAttribute("transform", `rotate(${(rng() * 60 - 30).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)})`);
     g.appendChild(blot);
   } else if (tell === "ruled") {
     for (let i = -1; i <= 1; i++) {

@@ -26,7 +26,7 @@ const WARP_AMP = CELL * 0.19;
 const WARP_FREQ = 0.017;
 
 export class Sheet {
-  constructor(seed = (Math.random() * 1e9) | 0) {
+  constructor(seed = (Math.random() * 1e9) | 0, { initialize = true } = {}) {
     this.sheetSeed = seed >>> 0;
     this.creaseSeed = 1;
     this.nextId = 0;
@@ -35,7 +35,115 @@ export class Sheet {
     this.cells = new Map();
     this.openOrder = [];      // ids in the order they were committed
     this.unfolds = 0;
-    this.init();
+    if (initialize) this.init();
+  }
+
+  /* A saved sheet keeps the inputs that define the partition plus the creases
+     and paths the user actually opened. Unfrozen frontier creases are derived
+     again from the saved seed table and creaseSeed. */
+  toState() {
+    return {
+      sheetSeed: this.sheetSeed,
+      creaseSeed: this.creaseSeed,
+      nextId: this.nextId,
+      unfolds: this.unfolds,
+      openOrder: [...this.openOrder],
+      seeds: [...this.seeds.values()].map(seed => ({ ...seed })),
+      creases: [...this.creases.entries()]
+        .filter(([, crease]) => crease.frozen)
+        .map(([key, crease]) => [key, { frozen: true, pts: crease.pts.map(point => [...point]) }]),
+      frozenCells: [...this.cells.values()]
+        .filter(cell => cell.frozenPath)
+        .map(cell => ({
+          id: cell.id,
+          path: cell.frozenPath,
+          runs: (cell.frozenRuns || cell.runs).map(run => run.map(point => [...point])),
+          keys: [...(cell.frozenKeys || cell.keys)],
+          centroid: [...(cell.frozenCentroid || cell.centroid)]
+        }))
+    };
+  }
+
+  static fromState(state) {
+    if (!state || typeof state !== "object") throw new Error("invalid sheet state");
+    const integer = value => Number.isInteger(value) && value >= 0;
+    if (!integer(state.sheetSeed) || !integer(state.creaseSeed) || !integer(state.nextId) ||
+        !integer(state.unfolds) || !Array.isArray(state.seeds) || !Array.isArray(state.openOrder) ||
+        !Array.isArray(state.creases) || !Array.isArray(state.frozenCells)) {
+      throw new Error("invalid sheet state");
+    }
+
+    const sheet = new Sheet(state.sheetSeed, { initialize: false });
+    const tiers = new Set(["open", "ghost", "loose"]);
+    for (const seed of state.seeds) {
+      if (!seed || !integer(seed.id) || !Number.isFinite(seed.x) || !Number.isFinite(seed.y) ||
+          !tiers.has(seed.tier) || typeof seed.pinned !== "boolean" ||
+          typeof seed.committed !== "boolean" ||
+          ![null, "drawn", "reset"].includes(seed.role) || sheet.seeds.has(seed.id)) {
+        throw new Error("invalid seed state");
+      }
+      sheet.seeds.set(seed.id, { ...seed });
+    }
+    const openIds = [...sheet.seeds.values()].filter(seed => seed.tier === "open").map(seed => seed.id);
+    if (sheet.seeds.size < 2 || new Set(state.openOrder).size !== state.openOrder.length ||
+        state.openOrder.length !== openIds.length ||
+        !state.openOrder.every(id => integer(id) && sheet.seeds.get(id)?.tier === "open" &&
+          sheet.seeds.get(id)?.committed) ||
+        [...sheet.seeds.values()].filter(seed => seed.role === "drawn").length !== 1 ||
+        [...sheet.seeds.values()].filter(seed => seed.role === "reset").length !== 1) {
+      throw new Error("incomplete sheet state");
+    }
+
+    for (const entry of state.creases) {
+      const [key, crease] = Array.isArray(entry) ? entry : [];
+      if (typeof key !== "string" || sheet.creases.has(key) || !crease || crease.frozen !== true || !Array.isArray(crease.pts) ||
+          crease.pts.length < 2 || !crease.pts.every(point => Array.isArray(point) && point.length === 2 &&
+            Number.isFinite(point[0]) && Number.isFinite(point[1]))) {
+        throw new Error("invalid crease state");
+      }
+      sheet.creases.set(key, { frozen: true, pts: crease.pts.map(point => [...point]) });
+    }
+
+    sheet.creaseSeed = state.creaseSeed;
+    const maxSeedId = Math.max(...sheet.seeds.keys());
+    sheet.nextId = Math.max(state.nextId, maxSeedId + 1);
+    sheet.unfolds = state.unfolds;
+    sheet.openOrder = [...state.openOrder];
+    sheet.rebuild();
+
+    const frozenCells = new Map();
+    for (const saved of state.frozenCells) {
+      if (!saved || !integer(saved.id) || frozenCells.has(saved.id) || typeof saved.path !== "string" ||
+          !Array.isArray(saved.runs) || !saved.runs.length ||
+          !saved.runs.every(run => Array.isArray(run) && run.length >= 2 && run.every(point =>
+            Array.isArray(point) && point.length === 2 && point.every(Number.isFinite))) ||
+          !Array.isArray(saved.keys) || saved.keys.length !== saved.runs.length ||
+          !saved.keys.every(key => typeof key === "string") ||
+          !Array.isArray(saved.centroid) || saved.centroid.length !== 2 || !saved.centroid.every(Number.isFinite) ||
+          saved.path !== pathFromRuns(saved.runs)) {
+        throw new Error("invalid frozen cell state");
+      }
+      frozenCells.set(saved.id, saved);
+    }
+    if (frozenCells.size !== openIds.length ||
+        [...frozenCells.keys()].some(id => sheet.seeds.get(id)?.tier !== "open")) {
+      throw new Error("frozen geometry is incomplete");
+    }
+    for (const seed of sheet.seeds.values()) {
+      if (seed.tier !== "open") continue;
+      const cell = sheet.cells.get(seed.id);
+      const saved = frozenCells.get(seed.id);
+      if (!cell || !saved) throw new Error("frozen geometry is incomplete");
+      cell.runs = saved.runs.map(run => run.map(point => [...point]));
+      cell.keys = [...saved.keys];
+      cell.centroid = [...saved.centroid];
+      cell.frozenRuns = cell.runs.map(run => run.map(point => [...point]));
+      cell.frozenKeys = [...cell.keys];
+      cell.frozenCentroid = [...cell.centroid];
+      cell.frozenPath = saved.path;
+      cell.path = saved.path;
+    }
+    return sheet;
   }
 
   /* ---------------- setup ---------------- */
@@ -236,14 +344,18 @@ export class Sheet {
         keys.push(key);
       }
 
+      const frozen = Boolean(prev?.frozenPath);
       this.cells.set(s.id, {
         id: s.id,
         seed: s,
-        runs,
-        keys,
+        runs: frozen ? prev.frozenRuns : runs,
+        keys: frozen ? prev.frozenKeys : keys,
         path: prev?.frozenPath ?? pathFromRuns(runs),
         frozenPath: prev?.frozenPath ?? null,
-        centroid: polyCentroid(cell.verts, this.vertices) || [s.x, s.y]
+        frozenRuns: prev?.frozenRuns ?? null,
+        frozenKeys: prev?.frozenKeys ?? null,
+        frozenCentroid: prev?.frozenCentroid ?? null,
+        centroid: frozen ? prev.frozenCentroid : (polyCentroid(cell.verts, this.vertices) || [s.x, s.y])
       });
     }
   }
@@ -268,6 +380,9 @@ export class Sheet {
     }
     const cell = this.cells.get(id);
     if (!cell) return;
+    cell.frozenRuns = cell.runs.map(run => run.map(point => [...point]));
+    cell.frozenKeys = [...cell.keys];
+    cell.frozenCentroid = [...cell.centroid];
     cell.frozenPath = pathFromRuns(cell.runs);
     cell.path = cell.frozenPath;
     for (const key of cell.keys) {

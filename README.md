@@ -49,6 +49,11 @@ The sheet is framed once, when you find it. After that the camera is yours —
 opening a fold never pulls the view back to fit. The paper grows off the edge of
 the screen and you go and look at it.
 
+The sheet saves automatically. Reload restores its geometry, opened contents,
+language memory, and camera framing. The reset fold removes that save before it
+creates a new sheet. If browser storage is nearly full, plica keeps the map and
+text but omits image URLs; those images are fetched again after restoration.
+
 ## The load-bearing invariant
 
 > **Opened geometry is immutable. Unopened geometry is provisional.**
@@ -167,9 +172,16 @@ is unreachable, a small built-in deck stands in.
 
 ## Status
 
-P0 (geometry) and P1 (content) are built. P2 is effects — the dormant/deploy
-loop, spatial targeting, `annex`, `foxing`, `watermark`. P3 is persistence, LOD,
-the read view and the deckled outer edge. See [PLICA-SPEC.md](PLICA-SPEC.md).
+P0 (geometry), P1 (content), and versioned persistence are built. The next
+shipping step is a minimal dormant/deploy effect loop. LOD, the read view,
+deckled outer edge, first-use instructions, and pinch zoom remain. See
+[PLICA-SPEC.md](PLICA-SPEC.md).
+
+Run the persistence tests from `F:\xyh`:
+
+```text
+node --experimental-default-type=module --test plica/tests/state.test.js
+```
 
 ---
 

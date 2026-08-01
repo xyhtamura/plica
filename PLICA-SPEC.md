@@ -2,7 +2,7 @@
 
 *A mystical crumpled paper, picked up from the road, that unfolds indefinitely.*
 
-Status: **spec / pre-build**, 2026-07-26. Nothing implemented yet.
+Status: **P0/P1 built; release hardening in progress**, 2026-08-01.
 
 ---
 
@@ -476,6 +476,8 @@ plica/
     ghost.js             pre-reveal identity RNG, tells
     camera.js            pan/zoom/auto-frame
     state.js             localStorage save/load/reset
+  tests/
+    state.test.js        persistence round-trip and recovery tests
   vendor/
     delaunay.js          d3-delaunay, local copy (no CDN)
 ```
@@ -515,8 +517,18 @@ and the `DEPENDENCIES.md` entry.
 the letterwork family, `annex`, `foxing`, `watermark`, `re-crease`. Three
 immediates. Spent marks.
 
-**P3 — the paper persists.** localStorage, LOD, read view, deckled outer edge,
-paper texture, the collapse animation properly animated, mobile touch.
+**P3 — the paper persists.** Versioned localStorage persistence is built. LOD,
+read view, deckled outer edge, paper texture, the collapse animation properly
+animated, and mobile touch remain.
+
+### Shipping beta sequence
+
+1. ~~Add versioned save/restore, quota fallback, and reset clearing.~~ Built
+   2026-08-01.
+2. Implement the minimal dormant effect loop: reverse touching folds, reveal
+   nearby ghosts, and re-crease. Do not generate other effect marks yet.
+3. Add first-use instructions, pinch zoom, and minimum keyboard access.
+4. Set and verify a 100-unfold performance target, then deploy the Pages beta.
 
 **Later, unscheduled.** Export the sheet as a single tall image or SVG. Sound —
 paper handling, one crease per unfold. A WebGL substrate layer for fibre and
@@ -549,6 +561,16 @@ stain. Whether a sheet can ever be *finished* rather than merely abandoned.
 ## Dev Log
 
 - **2026-07-30 — Antigravity** — Initialized standalone Git repository (`main` branch) in `f:\xyhtamura\plica`. Created `.gitignore`, staged all initial project source files, specs, and resources, and committed initial baseline. Verified git repository state cleanly. Remaining: P2 effects loop and P3 persistence/LOD.
+- **2026-08-01 — Codex** — Added a versioned `plica.sheet` save containing the
+  complete seed table, commit-time frozen cell geometry, frozen creases, open
+  order, leaves, dormant/spent fields, language memory, and viewport-independent
+  camera framing. Autosave now follows unfolds, content completion, pan, zoom,
+  page hiding, and reset. Invalid records fall back to a new sheet; quota
+  failures retry without image URLs. Image crops and ghost blot angles are now
+  deterministic per fold. Verified with five state tests, a 100-unfold geometry
+  stress run, and two browser reload cycles including continued growth after
+  restoration. Remaining: the minimal effect loop, first-use instructions,
+  pinch/keyboard input, performance targeting, and the rest of P3.
 
 ---
 

@@ -54,6 +54,27 @@ export class Camera {
 
   toWorld(px, py) { return [(px - this.x) / this.k, (py - this.y) / this.k]; }
 
+  toState(viewport) {
+    return {
+      center: [(viewport.w / 2 - this.tx) / this.tk, (viewport.h / 2 - this.ty) / this.tk],
+      scale: this.tk,
+      manual: this.manual
+    };
+  }
+
+  fromState(state, viewport) {
+    if (!state || !Array.isArray(state.center) || state.center.length !== 2 ||
+        !state.center.every(Number.isFinite) || !Number.isFinite(state.scale) ||
+        state.scale < 0.18 || state.scale > 4 || typeof state.manual !== "boolean") {
+      throw new Error("invalid camera state");
+    }
+    this.k = this.tk = state.scale;
+    this.x = this.tx = viewport.w / 2 - state.center[0] * state.scale;
+    this.y = this.ty = viewport.h / 2 - state.center[1] * state.scale;
+    this.manual = state.manual;
+    this.step();
+  }
+
   step() {
     const e = 0.14;
     this.x += (this.tx - this.x) * e;
