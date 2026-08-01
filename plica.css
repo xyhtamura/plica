@@ -147,6 +147,8 @@ body::before {
   box-shadow: 0 1.5rem 6rem rgba(0, 0, 0, .48);
 }
 
+#intro:focus { outline: none; }
+
 #intro::backdrop {
   background: rgba(10, 9, 8, .72);
   backdrop-filter: blur(3px);

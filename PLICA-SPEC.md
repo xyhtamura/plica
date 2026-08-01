@@ -567,6 +567,22 @@ open cells and their creases are frozen, paths contain finite points and closed
 seams, and both sides of each shared crease agree. The 2026-08-01 reference run
 completed in 13.35 seconds total, with 378 ms p95 and 585 ms maximum.
 
+### Recovery and layout preflight
+
+Before the Pages beta, exercise a saved grown sheet across a reload, a
+structurally plausible but unusable `plica.sheet` record, and an unavailable
+cutline request. The reload must preserve frozen paths and the camera and must
+still allow another unfold. A corrupt record must produce a new usable sheet,
+replace the bad save, and restore that replacement on the following load. A
+cutline failure must leave the 17-name built-in ancestor deck intact; this is a
+source fallback, not a service-worker guarantee that a fresh page can launch
+without its own static files.
+
+Check the introduction and working sheet at 1280×720 and 390×844, plus a short
+360×640 phone viewport. The document must not overflow horizontally, the SVG
+must fill the viewport, and the introduction must begin at its title on short
+screens while remaining internally scrollable to its dismissal button.
+
 **Later, unscheduled.** Export the sheet as a single tall image or SVG. Sound —
 paper handling, one crease per unfold. A WebGL substrate layer for fibre and
 stain. Whether a sheet can ever be *finished* rather than merely abandoned.
@@ -635,6 +651,19 @@ stain. Whether a sheet can ever be *finished* rather than merely abandoned.
   the deployed CSV returned 200 with the same rows and contract. Verified all
   fifteen automated tests. Remaining: minimum keyboard access, physical-device
   pinch verification, browser performance QA, and the Pages deployment.
+- **2026-08-01 — Codex** — Completed the recovery and responsive-layout
+  preflight. A three-unfold sheet kept all four frozen paths and its camera
+  transform across reload, then accepted another unfold. A shallow-valid but
+  unreconstructable save fell back to a new sheet and the replacement restored
+  on the next load. Added an automated rejected-fetch check for the 17-name
+  ancestor fallback. Verified the introduction and working sheet at 1280×720,
+  390×844, and 360×640 with no horizontal overflow or browser warnings. The
+  compact-phone pass found and fixed the dialog auto-focusing its bottom button
+  and opening scrolled past the explanation; it now focuses the dialog at the
+  top and the button remains reachable. All sixteen automated tests pass; the
+  latest 100-unfold run measured 16.41 s total, 400.9 ms p95, and 806.7 ms max.
+  Remaining: minimum keyboard access, physical-device pinch verification,
+  browser performance QA, and the Pages deployment.
 
 ---
 

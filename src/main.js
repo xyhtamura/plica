@@ -644,6 +644,8 @@ function showIntro() {
   if (!FORCE_INTRO && !shouldShowIntro(storage)) return;
   if (typeof introEl.showModal === "function") introEl.showModal();
   else introEl.setAttribute("open", "");
+  introEl.scrollTop = 0;
+  introEl.focus({ preventScroll: true });
 }
 
 function dismissIntro() {

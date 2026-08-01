@@ -37,3 +37,17 @@ test("the cutline parser preserves commas in names and rejects malformed rows", 
   assert.throws(() => parseCutlineCsv("1,Valid\nmalformed"), /line 2 has no comma/);
   assert.throws(() => parseCutlineCsv("1,"), /line 1 has no name/);
 });
+
+test("the built-in ancestor deck survives an offline cutline request", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new TypeError("network unavailable"); };
+  try {
+    const language = new Language(() => 0.5);
+    const fallback = [...language.ancestors];
+    assert.equal(await language.loadAncestors("offline://cutline"), false);
+    assert.deepEqual(language.ancestors, fallback);
+    assert.equal(language.ancestors.length, 17);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
