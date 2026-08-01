@@ -191,10 +191,19 @@ minimum keyboard access and physical touch-device pinch verification. LOD, the
 read view, and the deckled outer edge remain. See
 [PLICA-SPEC.md](PLICA-SPEC.md).
 
-Run the persistence, effect, and interaction tests from `F:\xyh`:
+The geometry shipping gate runs a deterministic mixed-frontier path through 100
+unfolds. Its limits are 30 seconds total, 750 ms at p95, and 2 seconds for any
+single unfold. The gate measures `Sheet.unfold()` only; network, DOM, and paint
+performance require browser and device checks. The 2026-08-01 reference run was
+13.35 seconds total, 378 ms p95, and 585 ms maximum.
+
+The cutline contract test reads the actual sibling `okkategorakle.csv`: 137
+unique names, split into 117 ancestors and 20 excluded operators.
+
+Run all tests from `F:\xyh`:
 
 ```text
-node --experimental-default-type=module --test plica/tests/state.test.js plica/tests/effects.test.js plica/tests/interaction.test.js
+node --experimental-default-type=module --test --test-concurrency=1 plica/tests/state.test.js plica/tests/effects.test.js plica/tests/interaction.test.js plica/tests/contracts.test.js plica/tests/shipping.test.js
 ```
 
 ---

@@ -12,10 +12,10 @@
  */
 
 const RESERVOIR_MAX = 300;
-const ANCESTORS_URL = "../cutline/okkategorakle.csv";
+export const ANCESTORS_URL = "../cutline/okkategorakle.csv";
 
 /* cutline's operator cards are mechanics, not world — plica has its own */
-const OPERATOR_NAMES = new Set([
+export const OPERATOR_NAMES = new Set([
   "shuffle", "replace first", "replace last", "reinterpret first", "reinterpret last",
   "return first", "return last", "or", "and", "xor", "draw two cards",
   "skip the next card", "remix", "mashup 2", "mashup 3",
@@ -29,6 +29,27 @@ const FALLBACK_ANCESTORS = [
   "Seed Vault", "Moonmilk", "Sea Change", "Triple Point", "Electric Sheep",
   "Fog Machine of War", "Dandelion Fireworks", "Midnight Fridge", "Deep Dream"
 ];
+
+/* The live deck is line-oriented rather than general CSV: the first comma
+   separates a marker from the card name, and later commas belong to the name.
+   Original rows use numeric markers; newer cutline rows may use NEW or blank. */
+export function parseCutlineCsv(text) {
+  const lines = String(text ?? "").split(/\r?\n/).filter(line => line.trim());
+  if (!lines.length) throw new Error("cutline csv is empty");
+  const rows = lines.map((line, index) => {
+    const comma = line.indexOf(",");
+    if (comma < 0) throw new Error(`cutline csv line ${index + 1} has no comma`);
+    const key = line.slice(0, comma).trim();
+    const name = line.slice(comma + 1).trim();
+    if (!name) throw new Error(`cutline csv line ${index + 1} has no name`);
+    return { key, name };
+  });
+  const names = [...new Set(rows.map(row => row.name))];
+  const operators = names.filter(name => OPERATOR_NAMES.has(name.toLowerCase()));
+  const ancestors = names.filter(name => !OPERATOR_NAMES.has(name.toLowerCase()));
+  if (!ancestors.length) throw new Error("cutline csv has no ancestors");
+  return { rows, names, operators, ancestors };
+}
 
 export const STOP = new Set(("the a an and or but of to in on at for with from by as is are was were be been" +
   " it its this that these those into over under about after before during their your our his her not" +
@@ -112,12 +133,9 @@ export class Language {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(String(res.status));
-      const names = (await res.text())
-        .split(/\r?\n/)
-        .map(line => line.split(",").slice(1).join(",").trim())
-        .filter(Boolean)
-        .filter(n => !OPERATOR_NAMES.has(n.toLowerCase()));
-      if (names.length) { this.ancestors = [...new Set(names)]; return true; }
+      const { ancestors } = parseCutlineCsv(await res.text());
+      this.ancestors = ancestors;
+      return true;
     } catch { /* the paper still has a world */ }
     return false;
   }

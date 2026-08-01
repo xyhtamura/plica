@@ -492,6 +492,8 @@ plica/
     state.test.js        persistence round-trip and recovery tests
     effects.test.js      spatial targeting and re-crease invariants
     interaction.test.js  first-use and pinch geometry tests
+    contracts.test.js    live sibling cutline CSV contract
+    shipping.test.js     100-unfold timing and geometry gate
   vendor/
     delaunay.js          d3-delaunay, local copy (no CDN)
 ```
@@ -499,13 +501,15 @@ plica/
 Static, no build step. Served from the root per `CLAUDE.md` — do not start a
 server inside `plica/`.
 
-**Dependency bookkeeping.** `src/language.js` will be a **vendored copy** of
-cutline's pull pipeline, not a shared import — cutline is a finished piece and
-should not acquire a consumer that constrains it. Drift between the two copies
-is allowed and expected. This still creates a tracked relationship: add a
-`plica ← cutline` entry to `DEPENDENCIES.md` **in the same sitting as the vendor
-step (P1)**, marked *vendored copy, drift allowed, no update obligation*, so the
-lineage is legible even though nothing is coupled.
+**Dependency bookkeeping.** `src/language.js` is plica's own adaptation of
+cutline's pull pipeline and may drift. The ancestor deck does not: plica fetches
+`../cutline/okkategorakle.csv` at runtime. Each non-empty row is
+`<marker>,<name>` with no header; the first comma is the separator, so later
+commas belong to the name. Numeric markers identify the original cards and
+later additions use `NEW` or a blank marker. The current live contract is 137
+unique names: 117 ancestors and 20 cutline operators that plica filters
+case-insensitively. `tests/contracts.test.js` reads the actual sibling file and
+checks the runtime parser. `DEPENDENCIES.md` records the cross-repo obligation.
 
 `scute` is **conceptual lineage only** — no code is taken, and nothing in
 `sgueltch/goopCodecs/` is touched. No `DEPENDENCIES.md` entry needed. Worth one
@@ -546,7 +550,22 @@ remain.
 3. ~~Add first-use instructions and pinch zoom.~~ Built 2026-08-01; physical
    touch-device pinch verification remains.
 4. Add minimum keyboard access.
-5. Set and verify a 100-unfold performance target, then deploy the Pages beta.
+5. ~~Set and verify a 100-unfold performance target.~~ Built 2026-08-01.
+6. Deploy the Pages beta.
+
+### 100-unfold shipping gate
+
+The deterministic test takes an outward frontier fold every fifth step and a
+fixed stride through the frontier otherwise. It times `Sheet.unfold()` only.
+The beta regression ceilings are **30 seconds total**, **750 ms p95**, and **2
+seconds for any one unfold**. Network pulls, SVG updates, image decode, and paint
+are outside this geometry gate and still require browser/device checks.
+
+The same run asserts the load-bearing geometry at every stage: every previously
+open path remains byte-identical, every open neighbour is pinned and non-loose,
+open cells and their creases are frozen, paths contain finite points and closed
+seams, and both sides of each shared crease agree. The 2026-08-01 reference run
+completed in 13.35 seconds total, with 378 ms p95 and 585 ms maximum.
 
 **Later, unscheduled.** Export the sheet as a single tall image or SVG. Sound —
 paper handling, one crease per unfold. A WebGL substrate layer for fibre and
@@ -607,6 +626,15 @@ stain. Whether a sheet can ever be *finished* rather than merely abandoned.
   pan regression check. The browser harness cannot emit two concurrent touch
   contacts, so direct pinch verification remains for a physical touch device.
   Remaining: minimum keyboard access and the 100-unfold performance target.
+- **2026-08-01 — Codex** — Added the 100-unfold shipping gate with frozen-path,
+  pin-rule, finite-geometry, closed-seam, and shared-crease assertions. Set the
+  geometry-only ceilings at 30 s total, 750 ms p95, and 2 s maximum; the
+  reference run measured 13.35 s / 378 ms / 585 ms. Made the cutline row parser
+  explicit and tested it against the actual sibling CSV: 137 unique names, 117
+  ancestors, and 20 filtered operators. The root-served CSV returned 200, and
+  the deployed CSV returned 200 with the same rows and contract. Verified all
+  fifteen automated tests. Remaining: minimum keyboard access, physical-device
+  pinch verification, browser performance QA, and the Pages deployment.
 
 ---
 
