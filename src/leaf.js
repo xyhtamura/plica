@@ -14,29 +14,6 @@ import { hash32, mulberry32 } from "./rng.js";
 
 const SVG = "http://www.w3.org/2000/svg";
 
-/* P2 will make these act. for now they are dormant marks: a fold that is
-   visibly holding something, which you may leave holding it forever.
- *
- * the gloss says plainly what tapping it will do. these are instructions, not
- * omens — the divination is in what ends up beside what, and a player deciding
- * whether to spend an effect needs to know what it does. evocative wording here
- * would only make the choice arbitrary.
- *
- * P2 note: once used, an effect fold becomes an ordinary fold — it takes on a
- * normal leaf (image / text / plate) rather than staying a spent mark. */
-export const EFFECT_MARKS = [
-  { glyph: "℮", gloss: "change every e to a" },
-  { glyph: "↺", gloss: "reverse the words in touching folds" },
-  { glyph: "◌", gloss: "delete one word from the whole sheet" },
-  { glyph: "❋", gloss: "stain touching folds brown" },
-  { glyph: "≈", gloss: "remove the vowels from touching folds" },
-  { glyph: "☀", gloss: "fade touching folds" },
-  { glyph: "◈", gloss: "show what nearby ghosts hold" },
-  { glyph: "▲", gloss: "absorb the smallest touching fold" },
-  { glyph: "∿", gloss: "redraw every crease on the sheet" },
-  { glyph: "⁙", gloss: "open two folds on the next tap" }
-];
-
 export function bbox(runs) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const run of runs) for (const [x, y] of run) {

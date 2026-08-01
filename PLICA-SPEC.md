@@ -335,6 +335,13 @@ spatial, not list-order.** cutline operates on "first card" / "last card"; plica
 operates on rings, creases, directions, and regions. That is what makes this a
 different piece rather than cutline in a new skin.
 
+**Beta implementation (built 2026-08-01).** The beta generates only three
+dormant effects: reverse the words in touching folds (`ring 1`), make ghost
+tells truthful within two rings (`ring 2`), and re-crease the whole sheet. Each
+is deployed by touching its open fold, is consumed once, and becomes a
+deterministic ordinary leaf. The wider catalogue below remains design space and
+is not generated yet.
+
 ### 7.1 The two classes
 
 **Dormant (the default, ~85% of effect folds).** Opening one reveals a glyph and
@@ -478,6 +485,7 @@ plica/
     state.js             localStorage save/load/reset
   tests/
     state.test.js        persistence round-trip and recovery tests
+    effects.test.js      spatial targeting and re-crease invariants
   vendor/
     delaunay.js          d3-delaunay, local copy (no CDN)
 ```
@@ -514,8 +522,8 @@ folds, the reset collapse, neighbour-seeded drift, ghost tells. Write `README.md
 and the `DEPENDENCIES.md` entry.
 
 **P2 — the paper acts.** Effects: the dormant/deploy loop, spatial targeting,
-the letterwork family, `annex`, `foxing`, `watermark`, `re-crease`. Three
-immediates. Spent marks.
+`reverse-ring`, `watermark`, `re-crease`, and spent marks are built. The wider
+letterwork family, `annex`, `foxing`, and immediate effects remain.
 
 **P3 — the paper persists.** Versioned localStorage persistence is built. LOD,
 read view, deckled outer edge, paper texture, the collapse animation properly
@@ -525,8 +533,9 @@ animated, and mobile touch remain.
 
 1. ~~Add versioned save/restore, quota fallback, and reset clearing.~~ Built
    2026-08-01.
-2. Implement the minimal dormant effect loop: reverse touching folds, reveal
-   nearby ghosts, and re-crease. Do not generate other effect marks yet.
+2. ~~Implement the minimal dormant effect loop: reverse touching folds, reveal
+   nearby ghosts, and re-crease.~~ Built 2026-08-01; no other effect marks are
+   generated.
 3. Add first-use instructions, pinch zoom, and minimum keyboard access.
 4. Set and verify a 100-unfold performance target, then deploy the Pages beta.
 
@@ -571,6 +580,15 @@ stain. Whether a sheet can ever be *finished* rather than merely abandoned.
   stress run, and two browser reload cycles including continued growth after
   restoration. Remaining: the minimal effect loop, first-use instructions,
   pinch/keyboard input, performance targeting, and the rest of P3.
+- **2026-08-01 — Codex** — Added the beta's three dormant spatial effects:
+  `reverse-ring` mutates text in touching open folds, `watermark` permanently
+  makes ghost tells truthful within two rings, and `re-crease` redraws and
+  freezes every live crease. Deploying an open effect consumes it and replaces
+  it with deterministic ordinary content; truthful tells and the new crease
+  generation persist across reloads. Verified with nine automated state/effect
+  tests and live browser deployments of all three effects, including a reload
+  that preserved every re-creased path. Remaining: first-use instructions,
+  pinch zoom, minimum keyboard access, and the 100-unfold performance target.
 
 ---
 

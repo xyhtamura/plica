@@ -38,8 +38,9 @@ No API keys. All sources are keyless and CORS-open:
 | | |
 |---|---|
 | tap a ghost | unfold it |
+| tap an open effect fold | deploy and consume it |
 | drag empty space | pan |
-| wheel / pinch | zoom |
+| wheel | zoom |
 | press and hold the reset fold | collapse the sheet and find a new one |
 
 The collapse begins under your finger and reverses if you let go early. It is
@@ -82,7 +83,7 @@ is opened — so the tells below are real information, not theatre.
 | **mixed** | a picture with a line bitten out of it |
 | **plate** | a flat colour field with locally generated type; no network wait |
 | **shape** | a procedural SVG drawing made from the sheet palette |
-| **effect** | a glyph and a gloss. dormant (P2 will make these act) |
+| **effect** | a glyph and a plain description. tap it to deploy it once |
 | **blank** | nothing. paper. |
 
 Weights are drawn per sheet, so a sheet that runs heavily blank is a quiet
@@ -150,6 +151,14 @@ effect; clean paper means blank. Tells are about **80% honest**. There are no
 numbers and no adjacency counts — the Minesweeper reference is the shape of the
 tension, not its arithmetic.
 
+## Effects
+
+The beta generates three effects. **Reverse-ring** reverses the words in every
+touching open fold. **Watermark** makes ghost tells truthful within two folds of
+the mark. **Re-crease** redraws every crease on the sheet without moving its
+seeds or contents. An effect waits until you tap its open fold, then it fires
+once and the mark becomes an ordinary leaf.
+
 ## Lineage
 
 - **cutline** — the language substrate. plica keeps the reservoir, entry
@@ -172,15 +181,15 @@ is unreachable, a small built-in deck stands in.
 
 ## Status
 
-P0 (geometry), P1 (content), and versioned persistence are built. The next
-shipping step is a minimal dormant/deploy effect loop. LOD, the read view,
-deckled outer edge, first-use instructions, and pinch zoom remain. See
+P0 (geometry), P1 (content), versioned persistence, and the beta effect loop are
+built. The next shipping step is first-use instructions, pinch zoom, and minimum
+keyboard access. LOD, the read view, and the deckled outer edge remain. See
 [PLICA-SPEC.md](PLICA-SPEC.md).
 
-Run the persistence tests from `F:\xyh`:
+Run the persistence and effect tests from `F:\xyh`:
 
 ```text
-node --experimental-default-type=module --test plica/tests/state.test.js
+node --experimental-default-type=module --test plica/tests/state.test.js plica/tests/effects.test.js
 ```
 
 ---

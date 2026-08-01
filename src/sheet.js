@@ -407,6 +407,25 @@ export class Sheet {
     return true;
   }
 
+  /* Re-crease is the explicit exception to frozen-open geometry. Seed positions
+     stay fixed; only every live crease's warp is regenerated, then the new
+     paths are committed immediately as the sheet's next stable state. */
+  recrease() {
+    const openIds = [...this.seeds.values()]
+      .filter(seed => seed.tier === "open")
+      .map(seed => seed.id);
+    for (const cell of this.cells.values()) {
+      cell.frozenPath = null;
+      cell.frozenRuns = null;
+      cell.frozenKeys = null;
+      cell.frozenCentroid = null;
+    }
+    for (const crease of this.creases.values()) crease.frozen = false;
+    this.creaseSeed++;
+    this.rebuild();
+    for (const id of openIds) this.commit(id);
+  }
+
   bounds() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const c of this.cells.values()) {

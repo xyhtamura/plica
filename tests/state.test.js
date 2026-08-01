@@ -69,17 +69,20 @@ test("sheet, leaves, camera, and language survive a versioned round trip", () =>
   const leaves = makeLeaves(sheet);
   const language = makeLanguage();
   const camera = { center: [142.5, -31.25], scale: 1.75, manual: true };
+  const truthfulId = sheet.rendered().find(cell => cell.seed.tier === "ghost").id;
+  const effects = { truthfulTells: new Set([truthfulId]) };
   const beforePaths = new Map(sheet.rendered()
     .filter(cell => cell.seed.tier === "open")
     .map(cell => [cell.id, cell.path]));
 
-  const snapshot = captureState({ sheet, leaves, camera, language });
+  const snapshot = captureState({ sheet, leaves, camera, language, effects });
   const storage = new MemoryStorage();
   assert.deepEqual(saveState(storage, snapshot).saved, true);
 
   const record = loadState(storage);
   assert.equal(record.version, STATE_VERSION);
   assert.deepEqual(record.camera, camera);
+  assert.deepEqual(record.effects, { truthfulTells: [truthfulId] });
 
   const restored = Sheet.fromState(record.sheet);
   assert.equal(restored.sheetSeed, sheet.sheetSeed);

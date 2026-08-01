@@ -1,7 +1,7 @@
 /* plica — a mystical crumpled paper that unfolds indefinitely
  *
- * P1: the paper says something. geometry from P0, content from the shared
- * okkategorakle world plus whatever the outside gives up on the day.
+ * P2: the paper acts. Geometry from P0, content from P1, and three dormant
+ * spatial effects that alter neighbouring language, tells, or every crease.
  */
 
 import { Sheet, CELL } from "./sheet.js";
@@ -9,11 +9,18 @@ import { Camera } from "./camera.js";
 import { pathFromRuns, lerpRuns, easeOutCubic } from "./crease.js";
 import { hash32, mulberry32 } from "./rng.js";
 import { Language } from "./language.js";
-import { Oracle } from "./ghost.js";
-import { renderLeaf, renderTell, EFFECT_MARKS } from "./leaf.js";
+import { Oracle, TELLS } from "./ghost.js";
+import { renderLeaf, renderTell } from "./leaf.js";
 import { TypeSetter, plateColour } from "./type.js";
 import { makePalette } from "./palette.js";
 import { makeShape } from "./shape.js";
+import {
+  deployEffect,
+  effectById,
+  effectFor,
+  restoreEffectState,
+  spentKindFor
+} from "./effects.js";
 import { captureState, clearState, loadState, restoreLanguage, saveState } from "./state.js";
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -25,7 +32,7 @@ const debugEl = document.getElementById("debug");
 const DEBUG = new URLSearchParams(location.search).has("debug");
 if (DEBUG) debugEl.hidden = false;
 
-let sheet, lang, oracle, leaves, type, palette;
+let sheet, lang, oracle, leaves, type, palette, effectState;
 
 /* every sheet invents its own colours — ground included. there is no light mode
    or dark mode, only this paper's mode. */
@@ -63,17 +70,22 @@ function imageCount(id) {
   return roll < 0.58 ? 1 : roll < 0.88 ? 2 : 3;
 }
 
-function newLeaf(id) {
+function newLeaf(id, forcedKind = null) {
   const seed = sheet.seeds.get(id);
-  const { kind, tell } = oracle.identity(id);
+  const identity = oracle.identity(id);
+  const kind = forcedKind || identity.kind;
+  const tell = identity.tell;
   const base = { id, tell, imageCount: imageCount(id) };
 
   if (seed?.role === "reset") return { ...base, kind: "blank", state: "ready" };
   if (seed?.role === "drawn") return { ...base, kind: "mixed", state: "pending", lines: [], images: [] };
 
   if (kind === "effect") {
-    const mark = EFFECT_MARKS[hash32(id, sheet.sheetSeed, 0xefec) % EFFECT_MARKS.length];
-    return { ...base, kind, state: "ready", glyph: mark.glyph, gloss: mark.gloss, spent: false };
+    const effect = effectFor(id, sheet.sheetSeed);
+    return {
+      ...base, kind, state: "ready", effectId: effect.id,
+      glyph: effect.glyph, gloss: effect.gloss, spent: false
+    };
   }
   if (kind === "blank") return { ...base, kind, state: "ready" };
   if (kind === "shape") {
@@ -189,7 +201,8 @@ function paintContent(id) {
   const tier = cell.seed.tier;
 
   if (tier === "ghost") {
-    const { tell } = oracle.identity(id);
+    const identity = oracle.identity(id);
+    const tell = effectState.truthfulTells.has(id) ? TELLS[identity.kind] : identity.tell;
     renderTell(n.content, cell, tell);
   } else {
     renderLeaf(n.content, cell, leaves.get(id), type);
@@ -259,6 +272,8 @@ function render() {
       ` · ghost ${seeds.filter(s => s.tier === "ghost").length}` +
       ` · loose ${seeds.filter(s => s.tier === "loose").length}` +
       ` · leaves ${Object.entries(kinds).map(([k, v]) => k + " " + v).join(" / ")}` +
+      ` · truthful ${effectState.truthfulTells.size}` +
+      ` · crease ${sheet.creaseSeed}` +
       ` · reservoir ${lang.reservoir.length} · ancestors ${lang.ancestors.length}`;
   }
 }
@@ -278,7 +293,8 @@ function saveNow() {
     sheet,
     leaves,
     camera: cam.toState(viewport()),
-    language: lang
+    language: lang,
+    effects: effectState
   });
   lastSave = saveState(storage, snapshot);
   if (DEBUG) debugEl.dataset.persistence = lastSave.saved
@@ -304,11 +320,19 @@ function restoreLeaves(entries) {
         !leaf.lines.every(line => typeof line === "string"))) throw new Error("invalid leaf lines");
     if (leaf.images !== undefined && (!Array.isArray(leaf.images) ||
         !leaf.images.every(url => typeof url === "string"))) throw new Error("invalid leaf images");
-    restored.set(id, {
+    const restoredLeaf = {
       ...leaf,
       lines: leaf.lines ? [...leaf.lines] : undefined,
       images: leaf.images ? [...leaf.images] : undefined
-    });
+    };
+    if (restoredLeaf.kind === "effect") {
+      const effect = effectById(restoredLeaf.effectId) || effectFor(id, sheet.sheetSeed);
+      restoredLeaf.effectId = effect.id;
+      restoredLeaf.glyph = effect.glyph;
+      restoredLeaf.gloss = effect.gloss;
+      restoredLeaf.spent = false;
+    }
+    restored.set(id, restoredLeaf);
   }
   return restored;
 }
@@ -329,12 +353,46 @@ function doUnfold(id) {
   for (const cell of sheet.rendered()) {
     if (cell.seed.tier !== "ghost") continue;
     const from = before.get(cell.id);
-    if (from && from.length === cell.runs.length) pairs.push({ cell, from, to: cell.runs });
+    if (runsMatch(from, cell.runs)) pairs.push({ cell, from, to: cell.runs });
   }
   render();
   // the camera does NOT follow an unfold. framing is the user's to hold.
   if (pairs.length) tween = { pairs, t0: performance.now(), dur: 460 };
   queueSave();
+}
+
+function runsMatch(from, to) {
+  return Boolean(from) && from.length === to.length &&
+    from.every((run, index) => run.length === to[index].length);
+}
+
+function doDeploy(id) {
+  const leaf = leaves.get(id);
+  if (!leaf || leaf.kind !== "effect" || leaf.spent || !effectById(leaf.effectId)) return false;
+
+  const effectId = leaf.effectId;
+  const result = deployEffect({ sheet, leaves, effectState, originId: id, effectId });
+  if (!result) return false;
+
+  const replacement = newLeaf(id, spentKindFor(id, sheet.sheetSeed));
+  replacement.spentEffect = effectId;
+  leaves.set(id, replacement);
+  if (replacement.state === "pending") fillLeaf(id);
+
+  const pairs = [];
+  if (result.geometryBefore) {
+    for (const cell of sheet.rendered()) {
+      const from = result.geometryBefore.get(cell.id);
+      if (runsMatch(from, cell.runs)) pairs.push({ cell, from, to: cell.runs });
+    }
+  }
+
+  render();
+  for (const changedId of result.changedLeaves) paintContent(changedId);
+  for (const changedId of result.changedTells) paintContent(changedId);
+  if (pairs.length) tween = { pairs, t0: performance.now(), dur: 620 };
+  queueSave();
+  return true;
 }
 
 function stepTween(now) {
@@ -350,7 +408,7 @@ function stepTween(now) {
     n.clip.setAttribute("d", d);
   }
   if (t >= 1) {
-    // tells sit at the centroid, which moved while the frontier re-creased
+    // content stays welded to the cell while a frontier or whole-sheet morphs
     for (const { cell } of tween.pairs) paintContent(cell.id);
     tween = null;
   }
@@ -399,8 +457,9 @@ svg.addEventListener("pointerup", () => {
     return;
   }
   if (p.id === null) return;
-  if (sheet.seeds.get(p.id)?.tier === "ghost") doUnfold(p.id);
-  // open effect folds are dormant marks in P1; deploying them is P2
+  const seed = sheet.seeds.get(p.id);
+  if (seed?.tier === "ghost") doUnfold(p.id);
+  else if (seed?.tier === "open") doDeploy(p.id);
 });
 
 svg.addEventListener("pointercancel", () => {
@@ -455,6 +514,7 @@ function configureSheet(record = null, previousAncestors = null) {
   lang = new Language(mulberry32(sheet.sheetSeed));
   if (record) restoreLanguage(lang, record.language);
   if (previousAncestors) lang.ancestors = previousAncestors;
+  effectState = restoreEffectState(record?.effects, sheet);
   leaves = record ? restoreLeaves(record.leaves) : new Map();
 
   for (const seed of sheet.seeds.values()) {
@@ -531,9 +591,11 @@ if (DEBUG) {
     get leaves() { return leaves; },
     get cam() { return cam; },
     get palette() { return palette; },
+    get effects() { return effectState; },
     get tweening() { return !!tween; },
     get persistence() { return lastSave; },
     save: saveNow,
+    deploy: doDeploy,
     /* drive the loop by hand when rAF is asleep (headless / hidden tab) */
     step(n = 1, dt = 16) {
       const t0 = performance.now();

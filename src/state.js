@@ -21,7 +21,7 @@ function languageState(language) {
   };
 }
 
-export function captureState({ sheet, leaves, camera, language }) {
+export function captureState({ sheet, leaves, camera, language, effects = { truthfulTells: new Set() } }) {
   return {
     kind: "plica-sheet",
     version: STATE_VERSION,
@@ -36,6 +36,9 @@ export function captureState({ sheet, leaves, camera, language }) {
       center: [...camera.center],
       scale: camera.scale,
       manual: camera.manual
+    },
+    effects: {
+      truthfulTells: [...effects.truthfulTells]
     },
     language: languageState(language)
   };

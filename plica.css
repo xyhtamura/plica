@@ -68,6 +68,8 @@ body::before {
 .cell.reset .face { fill: var(--reset-face); }
 .cell.reset .edge { stroke: var(--reset-edge); stroke-width: 1.3; stroke-dasharray: 7 5; }
 .cell.reset { cursor: grab; }
+.cell.open.has-effect { cursor: pointer; }
+.cell.open.has-effect:hover .edge { stroke-width: 1.8; }
 
 .leaf-img { pointer-events: none; }
 .leaf-shape { pointer-events: none; }
