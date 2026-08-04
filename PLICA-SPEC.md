@@ -475,6 +475,9 @@ overflows — images can be re-fetched, the map cannot.
 plica/
   index.html
   plica.css
+  assets/
+    intro-marble.jpg      public-domain image fill for the intro wordmark
+    README.md             source and rights note for the image
   PLICA-SPEC.md          this document
   README.md              written at P1
   src/
@@ -664,6 +667,17 @@ stain. Whether a sheet can ever be *finished* rather than merely abandoned.
   latest 100-unfold run measured 16.41 s total, 400.9 ms p95, and 806.7 ms max.
   Remaining: minimum keyboard access, physical-device pinch verification,
   browser performance QA, and the Pages deployment.
+- **2026-08-05 — Codex** — Replaced the intro's plain `plica` kicker with an
+  accessible five-letter collage wordmark. Each letter uses a separate type and
+  cut-paper treatment; the `c` is filled through SVG with a local public-domain
+  1832 marbled-paper scan whose source and rights note live in `assets/`. Added
+  a stylesheet revision token so returning browsers receive the new design.
+  Verified the intro at 1280×720, 390×844, and 360×640 with no horizontal
+  overflow; the short-phone view starts at the wordmark and still scrolls to
+  the dismissal button. The browser reported no warnings or errors. All sixteen
+  automated tests pass; the 100-unfold run measured 10.53 s total, 216.1 ms
+  p95, and 313.0 ms max. Remaining: minimum keyboard access, physical-device
+  pinch verification, browser performance QA, and the Pages deployment.
 
 ---
 

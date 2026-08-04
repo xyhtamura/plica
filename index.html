@@ -6,7 +6,7 @@
   <meta name="description" content="plica — a mystical crumpled paper that unfolds indefinitely.">
   <title>plica</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="plica.css">
+  <link rel="stylesheet" href="plica.css?v=20260805-5">
 </head>
 <body>
   <svg id="sheet" aria-label="a folded paper">
@@ -14,7 +14,22 @@
     <g id="world"><g id="cells"></g></g>
   </svg>
   <dialog id="intro" tabindex="-1" aria-labelledby="intro-title" aria-describedby="intro-summary intro-actions">
-    <p class="intro-kicker">plica</p>
+    <p class="intro-wordmark" role="img" aria-label="plica">
+      <span class="intro-letter intro-letter-p" aria-hidden="true">p</span>
+      <span class="intro-letter intro-letter-l" aria-hidden="true">l</span>
+      <span class="intro-letter intro-letter-i" aria-hidden="true">i</span>
+      <span class="intro-letter intro-letter-c" aria-hidden="true">
+        <svg viewBox="0 0 100 100" focusable="false">
+          <defs>
+            <pattern id="intro-marble-pattern" patternUnits="userSpaceOnUse" width="100" height="100">
+              <image href="assets/intro-marble.jpg" width="100" height="100" preserveAspectRatio="xMidYMid slice"></image>
+            </pattern>
+          </defs>
+          <text x="50" y="82" text-anchor="middle">c</text>
+        </svg>
+      </span>
+      <span class="intro-letter intro-letter-a" aria-hidden="true">a</span>
+    </p>
     <h1 id="intro-title">An unfolding paper</h1>
     <p id="intro-summary">plica is a growing sheet of generated text, images, and effects. What appears in a fold is influenced by the folds beside it. There is no score or ending.</p>
     <dl id="intro-actions">

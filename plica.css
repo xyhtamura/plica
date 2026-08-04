@@ -154,11 +154,130 @@ body::before {
   backdrop-filter: blur(3px);
 }
 
-.intro-kicker {
-  margin: 0 0 .45rem;
-  font-size: .72rem;
-  letter-spacing: .18em;
-  text-transform: uppercase;
+/* A fixed little collage before the generated one. Each letter is its own
+   cutting; the c takes its fill from a local public-domain marbled-paper scan. */
+.intro-wordmark {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  height: clamp(4.8rem, 14vw, 5.8rem);
+  margin: -.45rem 0 .35rem;
+  padding: .25rem .35rem .1rem .2rem;
+  isolation: isolate;
+  user-select: none;
+}
+
+.intro-letter {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  line-height: .78;
+  transform-origin: center;
+}
+
+.intro-letter::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  box-shadow: 0 .18rem .35rem rgba(46, 37, 26, .22);
+}
+
+.intro-letter-p {
+  z-index: 5;
+  width: .78em;
+  color: #b92f39;
+  font: italic 700 clamp(4.2rem, 13vw, 5.35rem)/.78 Georgia, "Times New Roman", serif;
+  transform: rotate(-8deg) translateY(.05em);
+  text-shadow: .035em .035em 0 #f6eedc;
+}
+
+.intro-letter-p::before {
+  inset: .12em -.05em .02em -.12em;
+  background: #bdd8ce;
+  clip-path: polygon(5% 8%, 92% 0, 100% 86%, 11% 100%, 0 31%);
+  transform: rotate(5deg);
+}
+
+.intro-letter-l {
+  z-index: 3;
+  width: .68em;
+  margin-left: -.05em;
+  color: #171612;
+  font: 900 clamp(3.8rem, 12vw, 4.85rem)/.8 Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  transform: rotate(3deg) translateY(-.03em);
+}
+
+.intro-letter-l::before {
+  inset: -.03em -.12em -.04em -.1em;
+  background: #e7bd3e;
+  clip-path: polygon(9% 0, 100% 7%, 88% 94%, 0 100%);
+  transform: rotate(-2deg);
+}
+
+.intro-letter-i {
+  z-index: 6;
+  width: .48em;
+  margin-left: -.02em;
+  color: #f4eee1;
+  font: 800 clamp(3.8rem, 12vw, 4.85rem)/.8 "Trebuchet MS", Arial, sans-serif;
+  transform: rotate(-4deg) translateY(.04em);
+  text-shadow: .035em .035em 0 #4d315d;
+}
+
+.intro-letter-i::before {
+  inset: -.08em -.08em -.03em -.1em;
+  background: #684977;
+  clip-path: polygon(13% 3%, 88% 0, 100% 93%, 0 100%);
+}
+
+.intro-letter-c {
+  z-index: 4;
+  display: block;
+  width: .8em;
+  margin-left: -.03em;
+  font: 900 clamp(4.1rem, 13vw, 5.2rem)/.78 "Arial Black", Arial, sans-serif;
+  transform: rotate(7deg) translateY(.03em);
+}
+
+.intro-letter-c::before {
+  inset: .04em -.03em -.01em -.06em;
+  background: #dfd4bf;
+  clip-path: polygon(7% 0, 95% 8%, 100% 82%, 84% 100%, 0 91%, 5% 27%);
+  transform: rotate(-4deg);
+}
+
+.intro-letter-c svg {
+  display: block;
+  width: 100%;
+  height: .92em;
+  overflow: visible;
+}
+
+.intro-letter-c text {
+  fill: url("#intro-marble-pattern");
+  stroke: #1b1915;
+  stroke-width: 1.5px;
+  paint-order: stroke fill;
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: 90px;
+  font-weight: 900;
+}
+
+.intro-letter-a {
+  z-index: 2;
+  width: .86em;
+  margin-left: -.08em;
+  color: #d8e4c8;
+  font: italic 700 clamp(4rem, 12.5vw, 5rem)/.78 Georgia, "Times New Roman", serif;
+  transform: rotate(-5deg) translateY(.03em);
+}
+
+.intro-letter-a::before {
+  inset: .04em -.12em .01em -.08em;
+  background: #29594f;
+  clip-path: polygon(0 14%, 83% 0, 100% 77%, 72% 100%, 8% 91%);
+  transform: rotate(2deg);
 }
 
 #intro h1 {
